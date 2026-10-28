@@ -38,6 +38,41 @@ ctest --test-dir build/host --output-on-failure
 On Linux, add `-DSOTA_SANITIZE=ON` to run the tests under AddressSanitizer and
 UndefinedBehaviorSanitizer.
 
+## Firmware
+
+```bash
+cmake -S . -B build/fw -G Ninja "-DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake"
+cmake --build build/fw
+```
+
+(Keep the quotes in PowerShell, which otherwise splits the argument at the dot.)
+
+This builds `build/fw/boot/sota_boot.elf` and the demo apps in `build/fw/app/`,
+each signed with `keys/dev_ed25519.pem` (`*.signed.bin`). Use
+`-DSOTA_SIGNING_KEY=...` to sign with another key; the bootloader embeds the
+matching public key.
+
+## Simulation (Renode)
+
+```bash
+python sim/smoke.py            # boot the factory image and print the console
+pytest sim                     # boot, trial, rollback and security scenarios
+```
+
+To poke around interactively, start Renode and run in its monitor:
+
+```
+include @renode/stm32f407.resc
+showAnalyzer sysbus.usart2
+start
+```
+
+`renode/stm32f407_sota.repl` adds the flash alias at address 0 that the real chip
+has; without it the simulated core cannot find the bootloader again after a
+reset.
+
+## Test vectors
+
 The C tests verify images in `test/vectors/`, which are signed by `otatool`.
 Regenerate them after changing the image format:
 

@@ -26,6 +26,8 @@ class Layout:
     ram_base: int
     ram_size: int
     slots: dict[str, Slot]
+    state_pages: tuple[int, int] = (0, 0)  # base of each boot state journal page
+    state_page_size: int = 0
 
     def slot(self, name: str) -> Slot:
         try:
@@ -59,6 +61,9 @@ def load_layout(path: str | Path) -> Layout:
         name.upper(): Slot(name.upper(), flash_base + _int(s["offset"]), _int(s["size"]))
         for name, s in raw["slots"].items()
     }
+    state = raw["regions"]["bootstate"]
+    state_base = flash_base + _int(state["offset"])
+    page = _int(state["size"]) // 2
     return Layout(
         name=raw["name"],
         flash_base=flash_base,
@@ -66,4 +71,6 @@ def load_layout(path: str | Path) -> Layout:
         ram_base=_int(raw["ram"]["base"]),
         ram_size=_int(raw["ram"]["size"]),
         slots=slots,
+        state_pages=(state_base, state_base + page),
+        state_page_size=page,
     )

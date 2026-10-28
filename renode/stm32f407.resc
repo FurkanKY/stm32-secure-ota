@@ -1,0 +1,28 @@
+:name: STM32 secure OTA bootloader
+:description: STM32F407 with the bootloader and a factory image in slot A.
+
+# Usage from the Renode monitor (paths relative to the repository root):
+#   (monitor) $build=@build/fw
+#   (monitor) include @renode/stm32f407.resc
+#   (monitor) start
+# The console (USART2) is shown in an analyzer window, or exposed on TCP port
+# $uart_port when $uart_port is set (used by the simulation tests).
+
+using sysbus
+
+$build?=@build/fw
+$factory?=$build/app/app_v1_a.signed.bin
+$platform?=@renode/stm32f407_sota.repl
+
+mach create "sota"
+machine LoadPlatformDescription $platform
+
+# Match the 16 MHz HSI the firmware runs on, so SysTick and the cycle counter
+# tell roughly the same story as on hardware.
+cpu PerformanceInMips 16
+nvic Frequency 16000000
+
+# A fresh chip: flash erased to 0xFF, then bootloader and factory image.
+sysbus LoadBinary $build/flash_erased.bin 0x08000000
+sysbus LoadELF $build/boot/sota_boot.elf
+sysbus LoadBinary $factory 0x08020000

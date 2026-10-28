@@ -1,0 +1,10 @@
+// Renode's STM32F4 platform with two fixes for running a bootloader:
+//  - flash is also visible at 0x00000000, like the real chip's boot alias,
+//    so the core finds the bootloader's vector table again after a reset.
+
+using "platforms/cpus/stm32f4.repl"
+
+flash: @ {
+    sysbus 0x08000000;
+    sysbus 0x00000000
+}

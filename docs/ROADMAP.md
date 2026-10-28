@@ -20,10 +20,14 @@ Milestones are done in order. Each one ends with something that runs and is test
   turn and the device must still boot a valid image and finish the update on retry;
   the C side verifies images signed by `otatool`
 
-## M3: Bootloader and demo app on STM32F407 (Renode)
-- Bootloader: startup, flash driver, verify, jump to slot, IWDG, reset cause
-- Demo app linked for slot A and slot B, `boot_confirm()` API
-- Renode script that boots the bootloader and app
+## M3: Bootloader and demo app on STM32F407 (Renode) ✅
+- Bare-metal STM32F4 port: startup, flash driver, UART, IWDG, reset cause, jump
+- Memory map generated from `boards/<board>/layout.json` (header + linker scripts)
+- Bootloader (14.5 KB of the 32 KB region, Ed25519 included)
+- Demo app built per slot and in test variants (good, never-confirming, security fix)
+- Renode platform and script; pytest harness drives Renode over TCP and checks
+  factory boot, trial + confirm, watchdog rollback, anti-rollback, tampered image,
+  update request from the app
 
 ## M4: Update over UART
 - Framed protocol (length + CRC32, ACK/NACK, resumable chunks)

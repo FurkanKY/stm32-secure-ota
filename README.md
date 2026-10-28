@@ -23,10 +23,16 @@ and anti-rollback protection, and firmware updates over UART and CAN.
 |-----------|--------------------------------------------------|
 | Path           | Contents                                                  |
 |----------------|-----------------------------------------------------------|
+| `app/`         | Demo application, built per slot and in test variants     |
 | `boards/`      | Flash layout per board (single source of truth)           |
+| `boot/`        | The bootloader                                            |
+| `cmake/`       | Arm toolchain file, layout code generation                |
 | `docs/`        | Specs and design notes                                    |
 | `keys/`        | Public development key (never use in production)          |
 | `lib/`         | Portable boot core: verify, boot state, policy, update    |
+| `port/`        | Board support (bare-metal STM32F4, no vendor HAL)         |
+| `renode/`      | Simulation platform and script                            |
+| `sim/`         | Renode end-to-end tests (pytest)                          |
 | `test/`        | Host unit tests, fake flash with power-cut injection      |
 | `third_party/` | Monocypher (Ed25519, SHA-512), Unity (test framework)     |
 | `tools/`       | `otatool`, the Python host tool                           |
@@ -45,6 +51,11 @@ pytest tools
 cmake -S . -B build/host -G Ninja -DSOTA_HOST_TESTS=ON
 cmake --build build/host
 ctest --test-dir build/host --output-on-failure
+
+# Firmware (bootloader + signed demo apps) and the Renode simulation
+cmake -S . -B build/fw -G Ninja "-DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake"
+cmake --build build/fw
+pytest sim
 
 # Sign an application binary for slot A
 otatool sign app_a.bin -o app_a.signed.bin --key keys/dev_ed25519.pem \

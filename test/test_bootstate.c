@@ -152,9 +152,28 @@ static void test_corrupted_record_ignored(void)
     assert_state_equal(&first, &s);
 }
 
+static void test_reads_record_written_by_otatool(void)
+{
+    sota_journal_t j;
+    sota_bootstate_t s;
+    vector_t rec = vector_load("journal_record");
+
+    TEST_ASSERT_EQUAL_UINT32(SOTA_RECORD_SIZE, rec.len);
+    fake_flash_load(flash, test_layout.state_page[0].base, rec.data, rec.len);
+    TEST_ASSERT_EQUAL(SOTA_OK, reopen(&j, &s));
+    TEST_ASSERT_EQUAL_UINT8(SOTA_SLOT_CONFIRMED, s.slot[0]);
+    TEST_ASSERT_EQUAL_UINT8(SOTA_SLOT_PENDING, s.slot[1]);
+    TEST_ASSERT_EQUAL_UINT8(0, s.active);
+    TEST_ASSERT_EQUAL_UINT8(2, s.attempts);
+    TEST_ASSERT_EQUAL_UINT32(7, s.security_floor);
+    TEST_ASSERT_EQUAL_UINT32(5, j.seq);
+    vector_free(&rec);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_reads_record_written_by_otatool);
     RUN_TEST(test_blank_journal_reports_no_state);
     RUN_TEST(test_latest_record_wins);
     RUN_TEST(test_rollover_keeps_state_across_many_pages);

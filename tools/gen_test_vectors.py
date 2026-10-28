@@ -16,6 +16,7 @@ from pathlib import Path
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from otatool import keys
+from otatool.bootstate import CONFIRMED, PENDING, BootState, encode_record
 from otatool.image import pack_version, sign_image
 from otatool.layout import load_layout
 
@@ -61,6 +62,14 @@ def main() -> None:
         )
         (OUT / f"{name}.bin").write_bytes(image)
         print(f"{name}.bin  slot {slot}  v{version}  ctr {counter}  {len(image)} bytes")
+
+    # A journal record encoded in Python; the C journal must read it back.
+    record = encode_record(
+        BootState(slot_a=CONFIRMED, slot_b=PENDING, active=0, attempts=2, security_floor=7),
+        seq=5,
+    )
+    (OUT / "journal_record.bin").write_bytes(record)
+    print("journal_record.bin")
 
 
 if __name__ == "__main__":
