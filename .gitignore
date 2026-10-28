@@ -1,0 +1,31 @@
+# Build output
+build/
+out/
+*.elf
+*.map
+*.hex
+*.o
+*.d
+
+# Signed artifacts produced locally (test vectors are generated in CI)
+*.signed.bin
+
+# Python
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+
+# Private keys: only the throwaway development key in keys/ is committed
+*.pem
+!keys/dev_ed25519.pem
+
+# Renode
+renode/*.log
+robot_output/
+*.resc.log
+
+# Editors
+.vscode/
+.idea/
+*.swp

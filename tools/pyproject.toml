@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "otatool"
+version = "0.1.0"
+description = "Sign, inspect and deliver firmware images for the STM32 secure OTA bootloader"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Furkan Kadir Yılmaz" }]
+dependencies = ["cryptography>=42", "pyserial>=3.5"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+otatool = "otatool.cli:main"
+
+[tool.setuptools]
+packages = ["otatool"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
