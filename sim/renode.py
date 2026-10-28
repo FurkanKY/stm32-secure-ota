@@ -57,6 +57,7 @@ class Uart:
         self.sock = sock
         self.buffer = bytearray()
         self.cursor = 0
+        self.raw_cursor = 0
         self.lock = threading.Condition()
         self.thread = threading.Thread(target=self._reader, daemon=True)
         self.thread.start()
@@ -92,6 +93,26 @@ class Uart:
 
     def write(self, data: bytes) -> None:
         self.sock.sendall(data)
+
+    # Raw byte access, so the update protocol client can use the same socket.
+    # It has its own read position, independent of expect().
+
+    def read(self, size: int, timeout: float) -> bytes:
+        deadline = time.monotonic() + timeout
+        with self.lock:
+            while len(self.buffer) <= self.raw_cursor:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return b""
+                self.lock.wait(remaining)
+            data = bytes(self.buffer[self.raw_cursor:self.raw_cursor + size])
+            self.raw_cursor += len(data)
+            return data
+
+    def skip_to_end(self) -> None:
+        """Forget everything received so far, for both expect() and read()."""
+        with self.lock:
+            self.cursor = self.raw_cursor = len(self.buffer)
 
     def text(self) -> str:
         with self.lock:
@@ -133,7 +154,7 @@ class Renode:
             raise RuntimeError(f"Renode command failed: {line}\n{out}")
         return out
 
-    def setup(self, factory: str | None = "app_v1_a") -> None:
+    def setup(self, factory: str | None = "app_v1_a", connect_uart: bool = True) -> None:
         """Create the machine with the bootloader and an optional factory image."""
         self.command(f"$build=@{self.build_dir.as_posix()}")
         if factory:
@@ -144,7 +165,8 @@ class Renode:
         self.command(f"include @{(REPO / 'renode' / 'stm32f407.resc').as_posix()}")
         self.command(f'emulation CreateServerSocketTerminal {self.uart_port} "uart" false')
         self.command("connector Connect sysbus.usart2 uart")
-        self.uart = Uart(connect(self.uart_port))
+        if connect_uart:
+            self.uart = Uart(connect(self.uart_port))
 
     def load(self, path: Path, address: int) -> None:
         self.command(f"sysbus LoadBinary @{Path(path).as_posix()} {address:#x}")

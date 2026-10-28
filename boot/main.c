@@ -9,8 +9,15 @@
 #include "sota/bootstate.h"
 #include "sota/handoff.h"
 #include "sota/image.h"
+#include "sota/proto.h"
+#include "sota/update.h"
 
-#define BOOT_VERSION "0.1.0"
+#define BOOT_VERSION "0.2.0"
+#define BOOT_VERSION_PACKED 0x00020000u
+
+/* After an update request from the application, give up waiting for the
+ * host after this long without a valid frame and boot normally again. */
+#define REQUEST_IDLE_MS 30000u
 
 /* Time the application gets to start kicking the watchdog. */
 #define APP_WATCHDOG_MS 4000u
@@ -60,13 +67,40 @@ static void probe_slot(void *ctx, unsigned slot, sota_slot_info_t *info)
     info->security_counter = hdr.security_counter;
 }
 
-static __attribute__((noreturn)) void recovery(const char *why)
+static void send_frame(void *ctx, const uint8_t *data, size_t len)
 {
+    (void)ctx;
+    console_send(data, len);
+}
+
+/* Serve the update protocol on the console UART. From here on the UART
+ * carries binary frames only, so nothing else is printed. */
+static __attribute__((noreturn)) void recovery(const char *why, sota_journal_t *journal,
+                                               sota_bootstate_t *state, bool requested)
+{
+    static sota_update_t update;
+    static sota_proto_t proto;
+    uint32_t last_frame = board_millis();
+
     console_write("recovery: ");
     console_write(why);
     console_write(", waiting for an update\n");
-    /* The update protocol is added in M4. */
+
+    sota_update_init(&update, board_flash(), board_layout(), &keyring, journal, state);
+    sota_proto_init(&proto, &update, BOOT_VERSION_PACKED, send_frame, NULL);
+
     for (;;) {
+        int c = console_getc();
+
+        if (c >= 0 && sota_proto_feed(&proto, (uint8_t)c)) {
+            last_frame = board_millis();
+            if (proto.reset_requested) {
+                board_reset();
+            }
+        }
+        if (requested && board_millis() - last_frame > REQUEST_IDLE_MS) {
+            board_reset(); /* nobody came: the request flag is gone, boot normally */
+        }
     }
 }
 
@@ -88,10 +122,10 @@ int main(void)
 
     sota_err_t err = sota_journal_open(&journal, board_flash(), layout, &stored);
     if (err != SOTA_OK && err != SOTA_E_NO_STATE) {
-        recovery("boot state unreadable");
+        recovery("boot state unreadable", &journal, &stored, false);
     }
     if (sota_handoff_take_request() == SOTA_REQUEST_UPDATE) {
-        recovery("update requested by the application");
+        recovery("update requested by the application", &journal, &stored, true);
     }
 
     sota_boot_decide(&stored, err == SOTA_OK, probe_slot, (void *)layout, &d);
@@ -99,7 +133,7 @@ int main(void)
         console_write("warning: could not save boot state\n");
     }
     if (d.slot == SOTA_RECOVERY) {
-        recovery("no bootable image");
+        recovery("no bootable image", &journal, &d.state, false);
     }
 
     unsigned slot = (unsigned)d.slot;

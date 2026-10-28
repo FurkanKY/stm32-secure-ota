@@ -5,6 +5,7 @@
 #ifndef BOARD_H
 #define BOARD_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "sota/common.h"
@@ -40,8 +41,12 @@ __attribute__((noreturn)) void board_jump(uint32_t vtor);
 const sota_flash_t *board_flash(void);
 const sota_layout_t *board_layout(void);
 
-/* Console (polled). console_getc returns -1 when nothing was received. */
+/* Console (polled). console_getc returns -1 when nothing was received.
+ * console_putc turns '\n' into "\r\n"; console_send passes bytes unchanged,
+ * for the update protocol. */
 void console_putc(char c);
+void console_send(const uint8_t *data, size_t len);
+void console_flush(void);
 int console_getc(void);
 void console_write(const char *s);
 void console_dec(uint32_t v);

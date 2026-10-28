@@ -29,12 +29,15 @@ Milestones are done in order. Each one ends with something that runs and is test
   factory boot, trial + confirm, watchdog rollback, anti-rollback, tampered image,
   update request from the app
 
-## M4: Update over UART
-- Framed protocol (length + CRC32, ACK/NACK, resumable chunks)
-- Bootloader-side receiver: header-first signature check, erase, program, header last
-- `otatool update` over a serial port or Renode's TCP UART
-- End-to-end Renode tests: good update, bad signature, rollback when the new app never
-  confirms, power cut in the middle of an update
+## M4: Update over UART ✅
+- Framed request/response protocol (CRC32, resync, retransmission, resume offset),
+  transport-independent in `lib/src/proto.c` ([spec](update-protocol.md))
+- Bootloader recovery mode: entered on request from the app or when nothing boots,
+  times out back to a normal boot after an app request
+- `otatool info` / `otatool update` over a serial port or Renode's TCP UART
+- End-to-end Renode tests: update and confirm, alternating slots, anti-rollback over
+  the wire, forged header, corrupted payload, broken release rolled back, power loss
+  in the middle of an update, first install on a blank device, the CLI itself
 
 ## M5: Continuous integration
 - GitHub Actions: Python tests, host C tests, firmware build, Renode Robot tests

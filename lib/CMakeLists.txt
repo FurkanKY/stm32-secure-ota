@@ -12,6 +12,7 @@ add_library(sota_core STATIC
     src/bootstate.c
     src/crc32.c
     src/image.c
+    src/proto.c
     src/update.c
 )
 target_include_directories(sota_core PUBLIC include)

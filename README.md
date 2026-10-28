@@ -14,7 +14,7 @@ and anti-rollback protection, and firmware updates over UART and CAN.
 - **Anti-rollback** via a monotonic security counter
 - **Power-loss safe**: boot state lives in an append-only journal, the image header is
   written last
-- Updates over **UART**, then **CAN**
+- Updates over **UART** with a resumable, CRC-checked protocol ([spec](docs/update-protocol.md)); **CAN** next
 - Host-tested C core, **Renode** simulation, GitHub Actions CI
 
 ## Repository layout
@@ -56,6 +56,10 @@ ctest --test-dir build/host --output-on-failure
 cmake -S . -B build/fw -G Ninja "-DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake"
 cmake --build build/fw
 pytest sim
+
+# Update a running board (or the simulation: --port tcp:127.0.0.1:PORT)
+otatool update --port COM5 --layout boards/stm32f407vg/layout.json \
+    build/fw/app/app_v3_a.signed.bin build/fw/app/app_v2_b.signed.bin
 
 # Sign an application binary for slot A
 otatool sign app_a.bin -o app_a.signed.bin --key keys/dev_ed25519.pem \

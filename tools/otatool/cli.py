@@ -126,6 +126,88 @@ def cmd_inspect(args: argparse.Namespace) -> int:
     return status
 
 
+def _connect(args: argparse.Namespace):
+    from .proto import Client
+    from .transport import open_transport
+
+    transport = open_transport(args.port, args.baud)
+    return transport, Client(transport)
+
+
+def _print_info(info) -> None:
+    from .proto import SLOT_STATES
+
+    print(f"bootloader  v{unpack_version(info.boot_version)}, protocol {info.proto_version}")
+    for i, name in enumerate("AB"):
+        version = info.slot_versions[i]
+        marks = []
+        if i == info.active:
+            marks.append("active")
+        if i == info.target:
+            marks.append("update target")
+        print(f"slot {name}      {SLOT_STATES.get(info.slot_states[i], '?'):<10} "
+              f"{'v' + unpack_version(version) if version else '-':<10} {', '.join(marks)}")
+    print(f"security floor  {info.security_floor}")
+
+
+def _enter_update_mode(transport, client):
+    # A running app reboots into update mode on 'u'; the bootloader ignores it.
+    return client.wait_for_bootloader(poke=b"u")
+
+
+def cmd_info(args: argparse.Namespace) -> int:
+    transport, client = _connect(args)
+    try:
+        info = client.wait_for_bootloader() if args.no_request else _enter_update_mode(
+            transport, client)
+        _print_info(info)
+        if args.reset:
+            client.reset()
+    finally:
+        transport.close()
+    return 0
+
+
+def _pick_image(paths: list[str], target: int, layout_path: str | None) -> bytes:
+    """Choose the image linked for the slot the device wants to update."""
+    images = [Path(p).read_bytes() for p in paths]
+    if layout_path:
+        layout = load_layout(layout_path)
+        want = list(layout.slots.values())[target]
+        for path, image in zip(paths, images):
+            if ImageHeader.from_bytes(image).load_addr == want.base + layout.header_size:
+                print(f"using {path} for slot {want.name}")
+                return image
+        raise ValueError(f"none of the images is built for slot {want.name}")
+    if len(images) != 1:
+        raise ValueError("several images given: pass --layout so the right one can be picked")
+    return images[0]
+
+
+def cmd_update(args: argparse.Namespace) -> int:
+    import time
+
+    transport, client = _connect(args)
+    try:
+        info = client.wait_for_bootloader() if args.no_request else _enter_update_mode(
+            transport, client)
+        _print_info(info)
+        image = _pick_image(args.images, info.target, args.layout)
+
+        def progress(done: int, total: int) -> None:
+            print(f"\r  {done * 100 // total:3d}%  {done}/{total} bytes", end="", flush=True)
+
+        start = time.monotonic()
+        client.update(image, chunk=min(args.chunk, info.max_chunk), progress=progress)
+        elapsed = time.monotonic() - start
+        print(f"\ninstalled {len(image)} bytes in {elapsed:.2f} s "
+              f"({len(image) / elapsed / 1024:.1f} KiB/s), rebooting into trial boot")
+        client.reset()
+    finally:
+        transport.close()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="otatool", description=__doc__)
     parser.add_argument("--version", action="version", version=f"otatool {__version__}")
@@ -162,6 +244,26 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--layout", help="also report which slot the image targets")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_inspect)
+
+    def add_link_args(p: argparse.ArgumentParser) -> None:
+        p.add_argument("--port", required=True,
+                       help="serial port (COM3, /dev/ttyACM0) or tcp:HOST:PORT for Renode")
+        p.add_argument("--baud", type=int, default=115200)
+        p.add_argument("--no-request", action="store_true",
+                       help="device is already in update mode; do not ask the app to reboot")
+
+    p = sub.add_parser("info", help="show the device's slots and boot state")
+    add_link_args(p)
+    p.add_argument("--reset", action="store_true", help="leave update mode afterwards")
+    p.set_defaults(func=cmd_info)
+
+    p = sub.add_parser("update", help="install a signed image over the update protocol")
+    add_link_args(p)
+    p.add_argument("images", nargs="+",
+                   help="signed images; with --layout the one for the target slot is used")
+    p.add_argument("--layout", help="boards/<board>/layout.json")
+    p.add_argument("--chunk", type=int, default=1024)
+    p.set_defaults(func=cmd_update)
     return parser
 
 
@@ -169,6 +271,6 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
-    except (ImageError, ValueError, OSError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
+    except (ImageError, ValueError, OSError, RuntimeError) as exc:
+        print(f"\nerror: {exc}", file=sys.stderr)
         return 1

@@ -90,6 +90,7 @@ uint32_t board_reset_cause(void)
 
 void board_reset(void)
 {
+    console_flush(); /* let the last bytes leave the UART */
     __asm volatile("dsb" ::: "memory");
     SCB_AIRCR = SCB_AIRCR_RESET;
     __asm volatile("dsb" ::: "memory");
@@ -161,14 +162,32 @@ const sota_layout_t *board_layout(void)
     return &layout;
 }
 
+static void uart_tx(uint8_t b)
+{
+    while (!(USART2_SR & USART_SR_TXE)) {
+    }
+    USART2_DR = b;
+}
+
 void console_putc(char c)
 {
     if (c == '\n') {
-        console_putc('\r');
+        uart_tx('\r');
     }
-    while (!(USART2_SR & USART_SR_TXE)) {
+    uart_tx((uint8_t)c);
+}
+
+void console_send(const uint8_t *data, size_t len)
+{
+    while (len--) {
+        uart_tx(*data++);
     }
-    USART2_DR = (uint8_t)c;
+}
+
+void console_flush(void)
+{
+    while (!(USART2_SR & USART_SR_TC)) {
+    }
 }
 
 int console_getc(void)

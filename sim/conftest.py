@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -12,6 +13,7 @@ sys.path.insert(0, str(REPO / "tools"))
 
 from otatool.bootstate import BootState, encode_record  # noqa: E402
 from otatool.layout import load_layout  # noqa: E402
+from otatool.proto import Client, DeviceInfo  # noqa: E402
 from renode import Renode, find_renode  # noqa: E402
 
 LAYOUT = load_layout(REPO / "boards" / "stm32f407vg" / "layout.json")
@@ -63,10 +65,41 @@ class Device:
         self.renode.load(path, LAYOUT.state_pages[0])
 
     def corrupt(self, address: int) -> None:
-        self.renode.command(f"sysbus WriteByte {address:#x} 0x00")
+        """Invert one byte of flash, so it is guaranteed to change."""
+        out = self.renode.command(f"sysbus ReadByte {address:#x}")
+        value = int(re.search(r"0x[0-9A-Fa-f]+", out).group(0), 16)
+        self.renode.command(f"sysbus WriteByte {address:#x} {value ^ 0xFF:#x}")
 
     def start(self) -> None:
         self.renode.start()
+
+    def image(self, name: str) -> bytes:
+        return (self.renode.build_dir / "app" / f"{name}.signed.bin").read_bytes()
+
+    def client(self) -> Client:
+        """Protocol client on the console UART, starting from fresh output."""
+        self.uart.skip_to_end()
+        return Client(self.uart, timeout=5.0)
+
+    def enter_update_mode(self) -> tuple[Client, DeviceInfo]:
+        """Ask the running app to reboot into the bootloader's update mode."""
+        client = self.client()
+        return client, client.wait_for_bootloader(total=60.0, poke=b"u")
+
+    def install(self, name: str) -> None:
+        """Full update of a running device, ending with the reboot into the trial."""
+        client, _ = self.enter_update_mode()
+        client.update(self.image(name))
+        self.reboot(client)
+
+    def reboot(self, client: Client) -> None:
+        client.reset()
+        # Console text resumes right after the RESET response; the client may
+        # already have pulled some of it into its frame buffer.
+        self.uart.cursor = self.uart.raw_cursor - len(client.reader.buf)
+
+    def power_cycle(self) -> None:
+        self.renode.command("machine Reset")
 
 
 @pytest.fixture
