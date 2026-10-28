@@ -23,9 +23,12 @@ sudo apt install gcc-arm-none-eabi cmake ninja-build gcc python3-venv
 
 ```bash
 python -m venv .venv
-.venv/Scripts/pip install -e "tools[test]"   # Linux/macOS: .venv/bin/pip
+.venv/Scripts/pip install -e "tools[test,can]"   # Linux/macOS: .venv/bin/pip
 pytest tools
 ```
+
+The `can` extra installs python-can, needed only for `--port can:...` (USB-CAN
+adapters).
 
 ## Host unit tests (C)
 

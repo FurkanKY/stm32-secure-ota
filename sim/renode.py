@@ -168,6 +168,19 @@ class Renode:
         if connect_uart:
             self.uart = Uart(connect(self.uart_port))
 
+    def add_can_gateway(self) -> Uart:
+        """Put the device on a CAN bus with a gateway board; return the
+        gateway's UART, which carries the update protocol to the bus."""
+        self.gateway_port = free_port()
+        self.command('emulation CreateCANHub "canHub"')
+        self.command('mach set "sota"')
+        self.command("connector Connect sysbus.can1 canHub")
+        self.command(f"include @{(REPO / 'renode' / 'gateway.resc').as_posix()}")
+        self.command(f'emulation CreateServerSocketTerminal {self.gateway_port} "gw_uart" false')
+        self.command("connector Connect sysbus.usart2 gw_uart")
+        self.command('mach set "sota"')
+        return Uart(connect(self.gateway_port))
+
     def load(self, path: Path, address: int) -> None:
         self.command(f"sysbus LoadBinary @{Path(path).as_posix()} {address:#x}")
 

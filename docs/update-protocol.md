@@ -65,6 +65,40 @@ host                                   bootloader
   is written last, so an interrupted update leaves the running image in charge. The
   host just starts again with HELLO.
 
+## Over CAN (ISO-TP)
+
+The same frames travel over CAN, one protocol frame per ISO 15765-2 message
+(`lib/src/isotp.c`, `tools/otatool/isotp.py`):
+
+| | |
+|---|---|
+| Bit rate | 500 kbit/s, classic CAN, 11-bit identifiers |
+| Host → device | `0x7E0` |
+| Device → host | `0x7E8` |
+| Addressing | normal, frames padded to 8 bytes with `0xCC` |
+| Flow control | the receiver asks for block size 3, STmin 0 |
+
+Block size 3 matches the 3-frame receive FIFO of bxCAN: the sender waits for a flow
+control frame after every three consecutive frames, so a polled receiver cannot be
+overrun however fast frames arrive. The unit tests include a case where a sender that
+ignores this overruns a 3-deep FIFO.
+
+On CAN the application has no console to receive the `u` request, so it reboots into
+update mode as soon as it sees any frame on `0x7E0`: the host's first HELLO.
+
+Two ways to reach the bus from a PC:
+
+- **USB-CAN adapter** (PCAN, CANable/slcan, SocketCAN):
+  `otatool update --port can:pcan:PCAN_USBBUS1 ...` (needs `pip install "otatool[can]"`)
+- **UART ↔ CAN gateway**: `gateway/` is firmware for a second STM32 that forwards
+  protocol frames between its UART and the bus, so `otatool` works unchanged over a
+  serial port. The Renode tests run exactly this two-board setup.
+
+```
+PC ──USB-UART──▶ gateway STM32 ──CAN 500k──▶ target STM32
+                 (gateway/)                  (boot/ + app/)
+```
+
 ## Host tool
 
 ```bash

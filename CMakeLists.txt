@@ -52,6 +52,7 @@ if(CMAKE_CROSSCOMPILING)
     add_subdirectory(port/stm32f4)
     add_subdirectory(boot)
     add_subdirectory(app)
+    add_subdirectory(gateway)
 
     # Blank 1 MiB flash image for the simulator (real flash erases to 0xFF).
     set(erased ${CMAKE_BINARY_DIR}/flash_erased.bin)

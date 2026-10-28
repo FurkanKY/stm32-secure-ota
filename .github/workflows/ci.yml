@@ -27,7 +27,7 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: tools/pyproject.toml
-      - run: pip install -e "tools[test]"
+      - run: pip install -e "tools[test,can]"
       - run: pytest tools -v
       - name: Test vectors match otatool
         run: |
@@ -88,6 +88,7 @@ jobs:
             build/fw/boot/sota_boot.elf
             build/fw/boot/sota_boot.bin
             build/fw/boot/sota_boot.map
+            build/fw/gateway/sota_gateway.elf
             build/fw/app/*.signed.bin
             build/fw/flash_erased.bin
           if-no-files-found: error

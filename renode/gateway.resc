@@ -1,0 +1,18 @@
+:name: UART <-> CAN gateway
+:description: A second STM32F407 running the gateway firmware. Include after stm32f407.resc.
+
+# Expects $build and $platform (see stm32f407.resc) and a CAN hub called canHub:
+#   (monitor) emulation CreateCANHub "canHub"
+#   (monitor) include @renode/stm32f407.resc
+#   (monitor) connector Connect sysbus.can1 canHub
+#   (monitor) include @renode/gateway.resc
+#   (monitor) start
+
+mach create "gateway"
+machine LoadPlatformDescription $platform
+cpu PerformanceInMips 16
+nvic Frequency 16000000
+
+sysbus LoadBinary $build/flash_erased.bin 0x08000000
+sysbus LoadELF $build/gateway/sota_gateway.elf
+connector Connect sysbus.can1 canHub

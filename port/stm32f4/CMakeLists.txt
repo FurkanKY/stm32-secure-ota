@@ -2,6 +2,7 @@ add_library(board_stm32f4 STATIC
     startup.c
     board.c
     flash_f4.c
+    can_f4.c
     ../common/console_fmt.c
 )
 target_include_directories(board_stm32f4 PUBLIC

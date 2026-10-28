@@ -113,6 +113,40 @@ def device(build_dir, tmp_path):
         renode.close()
 
 
+class CanBench(Device):
+    """The device on a CAN bus behind a UART<->CAN gateway board. Protocol
+    traffic goes through the gateway; expect() still reads the device console."""
+
+    def __init__(self, renode: Renode, tmp: Path, gateway_uart):
+        super().__init__(renode, tmp)
+        self.gateway_uart = gateway_uart
+
+    def client(self) -> Client:
+        self.gateway_uart.skip_to_end()
+        return Client(self.gateway_uart, timeout=5.0)
+
+    def enter_update_mode(self) -> tuple[Client, DeviceInfo]:
+        # No poke needed: the app reboots into update mode when it sees the
+        # HELLO frames on its CAN request id.
+        client = self.client()
+        return client, client.wait_for_bootloader(total=60.0)
+
+    def reboot(self, client: Client) -> None:
+        self.uart.skip_to_end()  # console text after the reset is all new
+        client.reset()
+
+
+@pytest.fixture
+def can_bench(build_dir, tmp_path):
+    renode = Renode(build_dir)
+    try:
+        renode.setup(factory="app_v1_a")
+        bench = CanBench(renode, tmp_path, renode.add_can_gateway())
+        yield bench
+    finally:
+        renode.close()
+
+
 @pytest.fixture
 def blank_device(build_dir, tmp_path):
     """Bootloader only, both slots erased."""

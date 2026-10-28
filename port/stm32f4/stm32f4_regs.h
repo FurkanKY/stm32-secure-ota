@@ -42,6 +42,47 @@
 #define USART_CR1_TE    (1u << 3)
 #define USART_CR1_UE    (1u << 13)
 
+/* GPIOB (CAN1 on PB8 RX / PB9 TX, AF9) */
+#define GPIOB_BASE      0x40020400u
+#define GPIOB_MODER     REG32(GPIOB_BASE + 0x00u)
+#define GPIOB_AFRH      REG32(GPIOB_BASE + 0x24u)
+#define RCC_AHB1ENR_GPIOBEN (1u << 1)
+#define RCC_APB1ENR_CAN1EN (1u << 25)
+
+/* bxCAN 1 (RM0090 section 32) */
+#define CAN1_BASE       0x40006400u
+#define CAN_MCR         REG32(CAN1_BASE + 0x000u)
+#define CAN_MSR         REG32(CAN1_BASE + 0x004u)
+#define CAN_TSR         REG32(CAN1_BASE + 0x008u)
+#define CAN_RF0R        REG32(CAN1_BASE + 0x00Cu)
+#define CAN_BTR         REG32(CAN1_BASE + 0x01Cu)
+#define CAN_TIR(n)      REG32(CAN1_BASE + 0x180u + 0x10u * (n))
+#define CAN_TDTR(n)     REG32(CAN1_BASE + 0x184u + 0x10u * (n))
+#define CAN_TDLR(n)     REG32(CAN1_BASE + 0x188u + 0x10u * (n))
+#define CAN_TDHR(n)     REG32(CAN1_BASE + 0x18Cu + 0x10u * (n))
+#define CAN_RI0R        REG32(CAN1_BASE + 0x1B0u)
+#define CAN_RDT0R       REG32(CAN1_BASE + 0x1B4u)
+#define CAN_RDL0R       REG32(CAN1_BASE + 0x1B8u)
+#define CAN_RDH0R       REG32(CAN1_BASE + 0x1BCu)
+#define CAN_FMR         REG32(CAN1_BASE + 0x200u)
+#define CAN_FM1R        REG32(CAN1_BASE + 0x204u)
+#define CAN_FS1R        REG32(CAN1_BASE + 0x20Cu)
+#define CAN_FFA1R       REG32(CAN1_BASE + 0x214u)
+#define CAN_FA1R        REG32(CAN1_BASE + 0x21Cu)
+#define CAN_F0R1        REG32(CAN1_BASE + 0x240u)
+#define CAN_F0R2        REG32(CAN1_BASE + 0x244u)
+#define CAN_MCR_INRQ    (1u << 0)
+#define CAN_MCR_SLEEP   (1u << 1)
+#define CAN_MCR_TXFP    (1u << 2)
+#define CAN_MCR_ABOM    (1u << 6)
+#define CAN_MSR_INAK    (1u << 0)
+#define CAN_TSR_TME0    (1u << 26)
+#define CAN_TIR_TXRQ    (1u << 0)
+#define CAN_RF0R_FMP0   (3u << 0)
+#define CAN_RF0R_RFOM0  (1u << 5)
+#define CAN_RIR_IDE     (1u << 2)
+#define CAN_FMR_FINIT   (1u << 0)
+
 /* Flash interface */
 #define FLASH_IF_BASE   0x40023C00u
 #define FLASH_ACR       REG32(FLASH_IF_BASE + 0x00u)

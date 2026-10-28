@@ -16,7 +16,9 @@ and anti-rollback protection, and firmware updates over UART and CAN.
 - **Anti-rollback** via a monotonic security counter
 - **Power-loss safe**: boot state lives in an append-only journal, the image header is
   written last
-- Updates over **UART** with a resumable, CRC-checked protocol ([spec](docs/update-protocol.md)); **CAN** next
+- Updates over **UART** and **CAN (ISO-TP)** with one resumable, CRC-checked protocol
+  ([spec](docs/update-protocol.md)); `otatool` talks to a serial port, a USB-CAN adapter or
+  a UART-CAN gateway board
 - Host-tested C core, **Renode** simulation, GitHub Actions CI
 
 ## Repository layout
@@ -28,6 +30,7 @@ and anti-rollback protection, and firmware updates over UART and CAN.
 | `boot/`        | The bootloader                                            |
 | `cmake/`       | Arm toolchain file, layout code generation                |
 | `docs/`        | Specs and design notes                                    |
+| `gateway/`     | UART <-> CAN gateway firmware for a second board          |
 | `keys/`        | Public development key (never use in production)          |
 | `lib/`         | Portable boot core: verify, boot state, policy, update    |
 | `port/`        | Board support (bare-metal STM32F4, no vendor HAL)         |

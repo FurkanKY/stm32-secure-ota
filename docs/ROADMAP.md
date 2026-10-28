@@ -47,10 +47,14 @@ Milestones are done in order. Each one ends with something that runs and is test
   tests on the built firmware
 - Firmware images uploaded as a build artifact, Renode logs kept when a test fails
 
-## M6: Update over CAN
-- bxCAN driver and ISO-TP style segmentation
-- Host side with python-can (CANable / PCAN)
-- Renode CAN test if the model allows it
+## M6: Update over CAN ✅
+- Polled bxCAN driver (500 kbit/s, hardware acceptance filter)
+- ISO 15765-2 (ISO-TP) in C and Python, with flow control sized to the 3-frame
+  receive FIFO; the same update protocol runs over UART and CAN
+- Bootloader serves both links in recovery; the app enters update mode on CAN traffic
+- UART ↔ CAN gateway firmware for a second board
+- `otatool --port can:...` through python-can (PCAN, CANable, SocketCAN)
+- Renode: two boards on a simulated CAN bus, update / forged image / CLI via gateway
 
 ## M7: Real hardware
 - Nucleo-F446RE layout and board support

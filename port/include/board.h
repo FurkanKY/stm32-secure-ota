@@ -38,6 +38,12 @@ void board_watchdog_kick(void);
 /* Quiesce interrupts and start the image whose vector table is at vtor. */
 __attribute__((noreturn)) void board_jump(uint32_t vtor);
 
+/* Classic CAN, 500 kbit/s, 11-bit ids, polled. Only frames with accept_id
+ * are received. board_can_send returns nonzero if no mailbox is free. */
+void board_can_init(uint32_t accept_id);
+int board_can_send(uint32_t id, const uint8_t data[8]);
+bool board_can_recv(uint32_t *id, uint8_t data[8], uint8_t *dlc);
+
 const sota_flash_t *board_flash(void);
 const sota_layout_t *board_layout(void);
 

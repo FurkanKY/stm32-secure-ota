@@ -9,11 +9,12 @@
 #include "sota/bootstate.h"
 #include "sota/handoff.h"
 #include "sota/image.h"
+#include "sota/isotp.h"
 #include "sota/proto.h"
 #include "sota/update.h"
 
-#define BOOT_VERSION "0.2.0"
-#define BOOT_VERSION_PACKED 0x00020000u
+#define BOOT_VERSION "0.3.0"
+#define BOOT_VERSION_PACKED 0x00030000u
 
 /* After an update request from the application, give up waiting for the
  * host after this long without a valid frame and boot normally again. */
@@ -67,36 +68,73 @@ static void probe_slot(void *ctx, unsigned slot, sota_slot_info_t *info)
     info->security_counter = hdr.security_counter;
 }
 
-static void send_frame(void *ctx, const uint8_t *data, size_t len)
+static sota_isotp_t can_tp;
+
+static void uart_send_frame(void *ctx, const uint8_t *data, size_t len)
 {
     (void)ctx;
     console_send(data, len);
 }
 
-/* Serve the update protocol on the console UART. From here on the UART
- * carries binary frames only, so nothing else is printed. */
+static int can_send_frame(void *ctx, uint32_t id, const uint8_t data[8])
+{
+    (void)ctx;
+    return board_can_send(id, data);
+}
+
+static void can_send_message(void *ctx, const uint8_t *data, size_t len)
+{
+    (void)ctx;
+    sota_isotp_send(&can_tp, data, (uint16_t)len, board_millis());
+}
+
+/* Serve the update protocol on the console UART and on CAN (ISO-TP), whichever
+ * the host uses. From here on the UART carries binary frames only, so nothing
+ * else is printed. Both links share one update engine. */
 static __attribute__((noreturn)) void recovery(const char *why, sota_journal_t *journal,
                                                sota_bootstate_t *state, bool requested)
 {
     static sota_update_t update;
-    static sota_proto_t proto;
+    static sota_proto_t uart_proto;
+    static sota_proto_t can_proto;
     uint32_t last_frame = board_millis();
 
     console_write("recovery: ");
     console_write(why);
-    console_write(", waiting for an update\n");
+    console_write(", waiting for an update (UART, CAN)\n");
 
     sota_update_init(&update, board_flash(), board_layout(), &keyring, journal, state);
-    sota_proto_init(&proto, &update, BOOT_VERSION_PACKED, send_frame, NULL);
+    sota_proto_init(&uart_proto, &update, BOOT_VERSION_PACKED, uart_send_frame, NULL);
+    sota_proto_init(&can_proto, &update, BOOT_VERSION_PACKED, can_send_message, NULL);
+    board_can_init(SOTA_CAN_ID_REQUEST);
+    sota_isotp_init(&can_tp, SOTA_CAN_ID_RESPONSE, can_send_frame, NULL);
 
     for (;;) {
+        uint32_t now = board_millis();
         int c = console_getc();
+        uint32_t id;
+        uint8_t data[8];
+        uint8_t dlc;
 
-        if (c >= 0 && sota_proto_feed(&proto, (uint8_t)c)) {
+        if (c >= 0 && sota_proto_feed(&uart_proto, (uint8_t)c)) {
             last_frame = board_millis();
-            if (proto.reset_requested) {
+            if (uart_proto.reset_requested) {
                 board_reset();
             }
+        }
+
+        while (board_can_recv(&id, data, &dlc)) {
+            uint16_t n = id == SOTA_CAN_ID_REQUEST ? sota_isotp_on_frame(&can_tp, data, dlc, now)
+                                                   : 0;
+            for (uint16_t i = 0; i < n; i++) {
+                if (sota_proto_feed(&can_proto, can_tp.rx_buf[i])) {
+                    last_frame = board_millis();
+                }
+            }
+        }
+        sota_isotp_poll(&can_tp, board_millis());
+        if (can_proto.reset_requested && !sota_isotp_tx_busy(&can_tp)) {
+            board_reset(); /* the RESET response has left the mailboxes */
         }
         if (requested && board_millis() - last_frame > REQUEST_IDLE_MS) {
             board_reset(); /* nobody came: the request flag is gone, boot normally */

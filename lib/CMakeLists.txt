@@ -12,6 +12,7 @@ add_library(sota_core STATIC
     src/bootstate.c
     src/crc32.c
     src/image.c
+    src/isotp.c
     src/proto.c
     src/update.c
 )

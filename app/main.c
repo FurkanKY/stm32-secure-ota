@@ -8,12 +8,14 @@
  * trial, then kicks the watchdog from its main loop.
  *
  * Console commands: i = info, r = reset, u = reboot into update mode.
+ * Any frame on the update request id (CAN) also reboots into update mode.
  */
 #include "board.h"
 #include "sota/boot.h"
 #include "sota/bootstate.h"
 #include "sota/handoff.h"
 #include "sota/image.h"
+#include "sota/isotp.h"
 
 #ifndef APP_SLOT
 #error "APP_SLOT must be 0 or 1"
@@ -82,12 +84,24 @@ static void confirm_if_on_trial(void)
 int main(void)
 {
     board_init();
+    board_can_init(SOTA_CAN_ID_REQUEST);
     print_info();
     confirm_if_on_trial();
     console_write("app running\n");
 
     for (;;) {
+        uint32_t id;
+        uint8_t data[8];
+        uint8_t dlc;
+
         board_watchdog_kick();
+        /* Any update protocol traffic on CAN (the host's HELLO) means a host
+         * wants to update us: hand over to the bootloader. */
+        if (board_can_recv(&id, data, &dlc) && id == SOTA_CAN_ID_REQUEST) {
+            console_write("update request on CAN, rebooting into update mode\n");
+            sota_handoff_request(SOTA_REQUEST_UPDATE);
+            board_reset();
+        }
         switch (console_getc()) {
         case 'i':
             print_info();
