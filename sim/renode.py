@@ -168,9 +168,10 @@ class Renode:
         if connect_uart:
             self.uart = Uart(connect(self.uart_port))
 
-    def add_can_gateway(self) -> Uart:
+    def add_can_gateway(self, connect_uart: bool = True) -> Uart | None:
         """Put the device on a CAN bus with a gateway board; return the
-        gateway's UART, which carries the update protocol to the bus."""
+        gateway's UART, which carries the update protocol to the bus. With
+        connect_uart=False the port (self.gateway_port) is left for others."""
         self.gateway_port = free_port()
         self.command('emulation CreateCANHub "canHub"')
         self.command('mach set "sota"')
@@ -179,7 +180,7 @@ class Renode:
         self.command(f'emulation CreateServerSocketTerminal {self.gateway_port} "gw_uart" false')
         self.command("connector Connect sysbus.usart2 gw_uart")
         self.command('mach set "sota"')
-        return Uart(connect(self.gateway_port))
+        return Uart(connect(self.gateway_port)) if connect_uart else None
 
     def load(self, path: Path, address: int) -> None:
         self.command(f"sysbus LoadBinary @{Path(path).as_posix()} {address:#x}")

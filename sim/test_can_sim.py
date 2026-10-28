@@ -54,8 +54,7 @@ def test_otatool_cli_through_the_gateway(build_dir, capsys):
     renode = Renode(build_dir)
     try:
         renode.setup(factory="app_v1_a")
-        # Connect the gateway, then let otatool own its UART socket.
-        renode.add_can_gateway().sock.close()
+        renode.add_can_gateway(connect_uart=False)  # otatool owns the gateway UART
         renode.start()
         port = f"tcp:127.0.0.1:{renode.gateway_port}"
         layout = str(REPO / "boards" / "stm32f407vg" / "layout.json")
