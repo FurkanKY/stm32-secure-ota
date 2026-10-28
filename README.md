@@ -1,5 +1,7 @@
 # STM32 Secure OTA Bootloader
 
+[![CI](https://github.com/FurkanKY/stm32-secure-ota/actions/workflows/ci.yml/badge.svg)](https://github.com/FurkanKY/stm32-secure-ota/actions/workflows/ci.yml)
+
 A from-scratch secure bootloader for STM32 with signed A/B firmware images, rollback
 and anti-rollback protection, and firmware updates over UART and CAN.
 

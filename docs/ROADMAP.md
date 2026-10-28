@@ -39,9 +39,13 @@ Milestones are done in order. Each one ends with something that runs and is test
   the wire, forged header, corrupted payload, broken release rolled back, power loss
   in the middle of an update, first install on a blank device, the CLI itself
 
-## M5: Continuous integration
-- GitHub Actions: Python tests, host C tests, firmware build, Renode Robot tests
-- Size report and test results as job artifacts
+## M5: Continuous integration ✅
+- GitHub Actions ([ci.yml](../.github/workflows/ci.yml)): `otatool` tests and a check
+  that the committed test vectors still match `otatool`; boot core unit tests with gcc
+  and clang under AddressSanitizer and UndefinedBehaviorSanitizer; firmware build with
+  a pinned Arm GNU toolchain and a size report in the job summary; Renode end-to-end
+  tests on the built firmware
+- Firmware images uploaded as a build artifact, Renode logs kept when a test fails
 
 ## M6: Update over CAN
 - bxCAN driver and ISO-TP style segmentation
