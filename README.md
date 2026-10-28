@@ -21,18 +21,32 @@ and anti-rollback protection, and firmware updates over UART and CAN.
 
 | Path      | Contents                                         |
 |-----------|--------------------------------------------------|
-| `boards/` | Flash layout per board (single source of truth)  |
-| `docs/`   | Specs and design notes                           |
-| `keys/`   | Public development key (never use in production) |
-| `tools/`  | `otatool`, the Python host tool                  |
+| Path           | Contents                                                  |
+|----------------|-----------------------------------------------------------|
+| `boards/`      | Flash layout per board (single source of truth)           |
+| `docs/`        | Specs and design notes                                    |
+| `keys/`        | Public development key (never use in production)          |
+| `lib/`         | Portable boot core: verify, boot state, policy, update    |
+| `test/`        | Host unit tests, fake flash with power-cut injection      |
+| `third_party/` | Monocypher (Ed25519, SHA-512), Unity (test framework)     |
+| `tools/`       | `otatool`, the Python host tool                           |
 
-## Quick start (host tool)
+## Quick start
+
+Tool installation is described in [docs/setup.md](docs/setup.md).
 
 ```bash
+# Python host tool
 python -m venv .venv
 .venv/Scripts/pip install -e "tools[test]"   # Linux/macOS: .venv/bin/pip
 pytest tools
 
+# C boot core on the host
+cmake -S . -B build/host -G Ninja -DSOTA_HOST_TESTS=ON
+cmake --build build/host
+ctest --test-dir build/host --output-on-failure
+
+# Sign an application binary for slot A
 otatool sign app_a.bin -o app_a.signed.bin --key keys/dev_ed25519.pem \
     --layout boards/stm32f407vg/layout.json --slot A --version 1.0.0
 otatool inspect app_a.signed.bin --key keys/dev_ed25519.pem

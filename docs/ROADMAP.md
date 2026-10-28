@@ -8,17 +8,19 @@ Milestones are done in order. Each one ends with something that runs and is test
 - Board flash layout as a single JSON source of truth
 - pytest suite
 
-## M2: Portable boot core, tested on the host
+## M2: Portable boot core, tested on the host ✅
 - C mirror of the header with `_Static_assert` offset checks
 - Image verification with Monocypher (Ed25519 + SHA-512)
 - Power-loss-safe boot state journal (append-only records, CRC, ping-pong sectors)
 - Boot decision state machine: trial boot, confirm, rollback, anti-rollback floor
-- Fake flash driver that enforces erase/program rules and can cut power after N writes
-- Unit tests (Unity) including randomized power-cut tests; cross-check against
-  images signed by `otatool`
+- Transport-independent update engine (header first, payload, header written last)
+- Fake flash driver that enforces erase/program rules and can cut power during any
+  operation, leaving torn data behind
+- Unit tests (Unity): every flash operation of a full update cycle is interrupted in
+  turn and the device must still boot a valid image and finish the update on retry;
+  the C side verifies images signed by `otatool`
 
 ## M3: Bootloader and demo app on STM32F407 (Renode)
-- Toolchain: arm-none-eabi-gcc, CMake, Ninja, Renode
 - Bootloader: startup, flash driver, verify, jump to slot, IWDG, reset cause
 - Demo app linked for slot A and slot B, `boot_confirm()` API
 - Renode script that boots the bootloader and app
