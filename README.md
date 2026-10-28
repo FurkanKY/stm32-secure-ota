@@ -19,8 +19,6 @@ and anti-rollback protection, and firmware updates over UART and CAN.
 
 ## Repository layout
 
-| Path      | Contents                                         |
-|-----------|--------------------------------------------------|
 | Path           | Contents                                                  |
 |----------------|-----------------------------------------------------------|
 | `app/`         | Demo application, built per slot and in test variants     |
