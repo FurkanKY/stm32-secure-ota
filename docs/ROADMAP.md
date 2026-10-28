@@ -60,9 +60,12 @@ Milestones are done in order. Each one ends with something that runs and is test
 - Nucleo-F446RE layout and board support
 - Measured numbers on hardware: bootloader size, verify time, update time
 
-## M8: Documentation
-- README with memory map and update flow diagrams, measurements, demo GIF
-- Threat model and EU Cyber Resilience Act notes
+## M8: Documentation ✅
+- README: architecture, memory map, boot flow, slot states and update sequence
+  (Mermaid), numbers, build/sign/flash/update guide, testing strategy, design decisions
+- [Threat model](threat-model.md) with each mitigation traced to a test
+- [EU Cyber Resilience Act notes](cyber-resilience-act.md): Annex I mapping and gaps
+- Still open: demo GIF and hardware measurements, both from M7
 
 ## Later
 - CAN FD on Nucleo-G474RE
